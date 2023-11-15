@@ -1,0 +1,18 @@
+# Script generated with shellspec --gen-bin
+# Runs the `vulnmap` command authenticated with Vulnmap and with the OCI Registry URLs set.
+# It expects the `VULNMAP_TOKEN` environment variable to be set to the authentication token
+# of the org.
+# Usage within Shellspec tests:
+#     % @registry_test <registry_url> <registry_username> <registry_password> <file_path>
+#!/bin/sh -e
+. "$SHELLSPEC_SUPPORT_BIN"
+# authenticate with Vulnmap
+vulnmap auth $VULNMAP_TOKEN 
+
+# set environment variables for the CLI
+vulnmap config set oci-registry-url="$1"
+vulnmap config set oci-registry-username="$2"
+vulnmap config set oci-registry-password="$3"
+
+# use bundle with Vulnmap
+vulnmap iac test $4
