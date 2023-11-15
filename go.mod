@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/khulnasoft-lab/vulnmap-iac-parsers v0.0.0-20231115005150-91a51cb75ab8
 	github.com/open-policy-agent/opa v0.53.0
-	github.com/opencontainers/image-spec v1.1.0-rc3
+	github.com/opencontainers/image-spec v1.1.0-rc5
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	oras.land/oras-go v1.2.3
