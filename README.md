@@ -118,7 +118,7 @@ For more help, read the documentation about [Vulnmap Infrastructure as Code](htt
 
 # Getting support
 
-We recommend reaching out via the [support@vulnmap.khulnasoft.com](mailto:support@vulnmap.khulnasoft.com) email whenever you need help with the SDK or Vulnmap in general.
+We recommend reaching out via the [support@khulnasoft.com](mailto:support@khulnasoft.com) email whenever you need help with the SDK or Vulnmap in general.
 
 
 * See [DEVELOPMENT.md](DEVELOPMENT.md) for how to setup the environment, add a new command, run the code locally, and run the tests.
