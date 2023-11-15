@@ -1,0 +1,148 @@
+name: E2E Tests
+
+on:
+  push:
+    branches:
+      - '**'        # matches every branch
+      - '!main'     # excludes main
+
+jobs:
+  shellspec_test:
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false # we care about other platforms and channels building
+      matrix:
+        os: [ubuntu, macos, windows]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.19'
+
+      - name: Build Golang CLI
+        run: go build -o vulnmap-iac-rules .
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        if: ${{ matrix.os != 'macos' }}
+        with:
+          username: ${{ secrets.OCI_REGISTRY_USERNAME }}
+          password: ${{ secrets.OCI_REGISTRY_PASSWORD }}
+
+      - name: Install Shellspec - non-Windows
+        if: ${{ matrix.os != 'windows' }}
+        run: |
+          curl -fsSL https://git.io/shellspec | sh -s -- -y
+          sudo ln -s ${HOME}/.local/lib/shellspec/shellspec /usr/local/bin/shellspec
+          ls -la ${HOME}/.local/lib/shellspec
+          echo "shellspec symlink:"
+          ls -la /usr/local/bin/shellspec
+          /usr/local/bin/shellspec --version
+          which shellspec
+          shellspec --version
+
+      - name: Install Shellspec - Windows
+        shell: powershell
+        if: ${{ matrix.os == 'windows' }}
+        run: |
+          Get-Host | Select-Object Version
+          Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+          sh ./scripts/install-shellspec-win.sh
+
+      - name: Run shellspec tests - Ubuntu
+        if: ${{ matrix.os == 'ubuntu'}}
+        working-directory: ./
+        shell: bash -l {0} # run bash with --login flag to load .bash_profile that's used by yarn install method
+        run: |
+          export PATH="/usr/local/bin/vulnmap-mac/docker:$PATH"
+
+          shellspec "spec/e2e"
+        env:
+          SKIP_PUSH_TEST: true # Oras copy is intermittently failing on Ubuntu with "cannot reuse body, request must be retried"
+          OCI_REGISTRY_NAME: ${{ secrets.OCI_REGISTRY_NAME }}
+
+      - name: Run shellspec tests - MacOS
+        if: ${{ matrix.os == 'macos'}}
+        working-directory: ./
+        shell: bash -l {0} # run bash with --login flag to load .bash_profile that's used by yarn install method
+        run: |
+          export PATH=${GOROOT}/bin:$PATH
+
+          shellspec "spec/e2e"
+        env:
+          SKIP_PUSH_TEST: true # Docker is not supported in MacOS: https://github.com/docker/login-action/issues/14
+
+      - name: Run shellspec tests - Windows
+        if: ${{ matrix.os == 'windows' }}
+        working-directory: ./
+        shell: powershell
+        run: |
+          sh ./scripts/run-e2e-win.sh
+        env:
+          OCI_REGISTRY_NAME: ${{ secrets.OCI_REGISTRY_NAME }}
+
+  npm_install_test:
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false # we care about other platforms and channels building
+      matrix:
+        os: [ubuntu, macos, windows]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.19'
+
+      - name: Install NPM package - non-Windows
+        if: ${{ matrix.os != 'windows' }}
+        run: |
+          ./scripts/release-npm.sh --tag=v0.0.1
+
+          npm i -g ./dist
+
+          # verifies that the installation works
+          vulnmap-iac-rules
+
+      - name: Install NPM package - Windows
+        shell: powershell
+        if: ${{ matrix.os == 'windows' }}
+        run: |
+          Get-Host | Select-Object Version
+          Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+          sh ./scripts/release-npm.sh --tag=v0.0.1
+
+          npm install -g npm
+
+          npm install -g ./dist
+          
+          # verifies that the installation works
+          vulnmap-iac-rules
+
+  docker_build_and_run_test:
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false # we care about other platforms and channels building
+      matrix:
+        os: [ubuntu]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+
+      - name: Build binaries
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          args: --snapshot --rm-dist
+
+      - name: Test Dockerfile
+        run: |
+          docker run khulnasoft-lab/vulnmap-iac-rules:latest

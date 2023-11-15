@@ -1,0 +1,9 @@
+# Vulnmap (https://vulnmap.khulnasoft.com) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  'vulnmap:lic:golang:github.com:hashicorp:hcl:v2:MPL-2.0':
+    - '*':
+        reason: This license is addressed by including acknowledgments in each release
+        created: 2022-01-10T09:21:54.881Z
+patch: {}

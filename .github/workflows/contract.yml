@@ -1,0 +1,107 @@
+name: Contract Tests
+
+on:
+  push:
+    branches:
+      - '**'        # matches every branch
+      - '!main'     # excludes main
+
+jobs:
+  contract_test:
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false # we care about other platforms and channels building
+      matrix:
+        os: [ubuntu, macos, windows]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 15
+
+      - name: Install Vulnmap with npm
+        run: |
+          echo "node_version: ${{ matrix.node_version }}"
+          node -v
+          echo "install vulnmap with npm"
+          npm install -g vulnmap
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.19'
+
+      - name: Build Golang CLI
+        run: go build -o vulnmap-iac-rules .
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        if: ${{ matrix.os != 'macos' }}
+        with:
+          username: ${{ secrets.OCI_REGISTRY_USERNAME }}
+          password: ${{ secrets.OCI_REGISTRY_PASSWORD }}
+
+      - name: Install Shellspec - non-Windows
+        if: ${{ matrix.os != 'windows' }}
+        run: |
+          curl -fsSL https://git.io/shellspec | sh -s -- -y
+          sudo ln -s ${HOME}/.local/lib/shellspec/shellspec /usr/local/bin/shellspec
+          ls -la ${HOME}/.local/lib/shellspec
+          echo "shellspec symlink:"
+          ls -la /usr/local/bin/shellspec
+          /usr/local/bin/shellspec --version
+          which shellspec
+          shellspec --version
+
+      - name: Install Shellspec - Windows
+        shell: powershell
+        if: ${{ matrix.os == 'windows' }}
+        run: |
+          Get-Host | Select-Object Version
+          Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+          sh ./scripts/install-shellspec-win.sh
+
+      - name: Run shellspec tests - Ubuntu
+        if: ${{ matrix.os == 'ubuntu'}}
+        working-directory: ./
+        shell: bash -l {0} # run bash with --login flag to load .bash_profile that's used by yarn install method
+        run: |
+          export PATH="/usr/local/bin/vulnmap-mac/docker:$PATH"
+
+          shellspec "spec/contract"
+        env:
+          VULNMAP_TOKEN: ${{ secrets.VULNMAP_TOKEN }}
+          OCI_REGISTRY_NAME: ${{ secrets.OCI_REGISTRY_NAME }}
+          OCI_REGISTRY_USERNAME: ${{ secrets.OCI_REGISTRY_USERNAME }}
+          OCI_REGISTRY_PASSWORD: ${{ secrets.OCI_REGISTRY_PASSWORD }}
+          OS: ${{ matrix.os }}
+
+      - name: Run shellspec tests - MacOS
+        if: ${{ matrix.os == 'macos'}}
+        working-directory: ./
+        shell: bash -l {0} # run bash with --login flag to load .bash_profile that's used by yarn install method
+        run: |
+          export PATH=${GOROOT}/bin:$PATH
+
+          shellspec "spec/contract"
+        env:
+          SKIP_PUSH_TEST: true # Docker is not supported in MacOS: https://github.com/docker/login-action/issues/14
+          VULNMAP_TOKEN: ${{ secrets.VULNMAP_TOKEN }}
+          OCI_REGISTRY_NAME: ${{ secrets.OCI_REGISTRY_NAME }}
+          OCI_REGISTRY_USERNAME: ${{ secrets.OCI_REGISTRY_USERNAME }}
+          OCI_REGISTRY_PASSWORD: ${{ secrets.OCI_REGISTRY_PASSWORD }}
+
+      - name: Run shellspec tests - Windows
+        if: ${{ matrix.os == 'windows' }}
+        working-directory: ./
+        shell: powershell
+        run: |
+          sh ./scripts/run-contract-win.sh
+        env:
+          VULNMAP_TOKEN: ${{ secrets.VULNMAP_TOKEN }}
+          OCI_REGISTRY_NAME: ${{ secrets.OCI_REGISTRY_NAME }}
+          OCI_REGISTRY_USERNAME: ${{ secrets.OCI_REGISTRY_USERNAME }}
+          OCI_REGISTRY_PASSWORD: ${{ secrets.OCI_REGISTRY_PASSWORD }}
+          OS: ${{ matrix.os }}
+

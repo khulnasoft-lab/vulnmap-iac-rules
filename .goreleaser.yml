@@ -1,0 +1,144 @@
+project_name: vulnmap-iac-rules
+
+before:
+  # run this here to avoid "git is currently in a dirty state" error
+  hooks:
+    - go mod tidy
+    - go install github.com/google/go-licenses@latest
+    - go-licenses save . --save_path=./acknowledgements
+    - tar -cvf ./acknowledgements.tar.gz -C ./acknowledgements .
+    - rm -rf ./acknowledgements
+
+builds:
+  - main: ./main.go
+    env:
+    - CGO_ENABLED=0
+    goos:
+    - windows
+    - linux
+    - darwin
+    goarch:
+    - amd64
+    - arm64
+    ldflags:
+    - '-s -w -X github.com/khulnasoft-lab/vulnmap-iac-rules/cmd.version={{.Version}}'
+
+archives:
+  - id: default
+    files:
+      - none*
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+    format: tar.gz
+    format_overrides:
+    - goos: windows
+      format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+    - '^chore:'
+    - '^refactor:'
+    - '^Merge pull request'
+
+snapshot:
+  name_template: "{{ .Version }}"
+
+release:
+  # If set to true, will not auto-publish the release.
+  draft: false
+
+  # Header template for the release body.
+  # Defaults to empty.
+  header: |
+    ## vulnmap-iac-rules ({{ .Date }})
+
+    Welcome to this new release!
+
+  # Footer template for the release body.
+  # Defaults to empty.
+  footer: |
+    ## Thanks!
+
+    Those were the changes on {{ .Tag }}!
+
+  extra_files:
+    - glob: ./acknowledgements.tar.gz
+
+brews:
+  -
+    # If set to auto, the release will not be uploaded to the homebrew tap
+    # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
+    # Default is false.
+    skip_upload: false
+    # GitHub repository to push the formula to
+    tap:
+      owner: vulnmap
+      name: homebrew-tap
+      token: "{{ .Env.VULNMAP_ACCESS_TOKEN }}"
+
+    folder: Formula
+    commit_author:
+      name: vulnmap
+      email: cloud-dev-ex@users.noreply.github.com
+    homepage: "https://vulnmap.khulnasoft.com/"
+    license: Apache-2.0
+    description: "Write, debug, test, and bundle custom rules for Vulnmap Infrastructure as Code."
+
+scoop:
+  # If set to auto, the release will not be uploaded to the scoop bucket
+  # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
+  # Default is false.
+  skip_upload: false
+
+  # Repository to push the app manifest to.
+  bucket:
+    owner: vulnmap
+    name: scoop-vulnmap
+    token: "{{ .Env.VULNMAP_ACCESS_TOKEN }}"
+
+  commit_author:
+    name: vulnmap
+    email: cloud-dev-ex@users.noreply.github.com
+  homepage: "https://vulnmap.khulnasoft.com/"
+  license: Apache-2.0
+  description: "Write, debug, test, and bundle custom rules for Vulnmap Infrastructure as Code."
+
+# Publishes the deb and rpm files to the GitHub releases page.
+nfpms:
+  - bindir: /usr/bin
+    description: "Write, debug, test, and bundle custom rules for Vulnmap Infrastructure as Code."
+    formats:
+      - deb
+      - rpm
+    homepage: https://github.com/khulnasoft-lab/vulnmap-iac-rules
+    license: Apache-2.0
+    maintainer: 'Vulnmap'
+
+dockers:
+  -
+    id: dockerimg
+    goos: linux
+    goarch: amd64
+    image_templates:
+    - "vulnmap/{{ .ProjectName }}:latest"
+    - "vulnmap/{{ .ProjectName }}:{{ .Version }}"
+
+announce:
+  twitter:
+    enabled: false
+  slack:
+    enabled: false
+  reddit:
+    enabled: false

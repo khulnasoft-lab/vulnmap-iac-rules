@@ -1,0 +1,18 @@
+# Documentation: https://www.notion.so/vulnmap/Entity-Metadata-1e313ca03f954a6680b2b6b7b3d95297
+# Validation Tool: https://github.com/khulnasoft-lab/prodsec-github-bot
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: vulnmap-iac-rules
+  description: < A Golang SDK that provides commands for writing, debugging, testing, and bundling custom rules for the Vulnmap CLI
+  labels:
+    vulnmap.khulnasoft.com/businessCriticality: low
+    vulnmap.khulnasoft.com/visibility: public
+    vulnmap.khulnasoft.com/metadata-version: "2021-14-10"
+  annotations:
+    github.com/project-slug: khulnasoft-lab/vulnmap-iac-rules
+    github.com/team-slug: vulnmap/cloud-dev-ex
+spec:
+  type: external-tooling
+  lifecycle: "-"
+  owner: cloud-dev-ex
