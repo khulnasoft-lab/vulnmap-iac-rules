@@ -15,7 +15,7 @@ runs:
         echo "install vulnmap with npm"
         npm install -g vulnmap
 
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.19'
 
